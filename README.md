@@ -22,7 +22,7 @@ Stack: Java 21, Spring Boot 3.3, Spring Data JPA, Postgres, springdoc (Swagger U
 # Health check
 curl https://nevis-search-api-ytiv.onrender.com/health
 
-# Search (semantic matching works!)
+# Search (semantic matching works)
 curl "https://nevis-search-api-ytiv.onrender.com/search?q=address%20proof"
 ```
 
@@ -282,8 +282,6 @@ The final score is `total / (total + 2)`, which keeps it in (0, 1).
 
 **Solution B: LLM expansion (optional).** Claude suggests phrases for any query. Covers the long tail. Weakness: latency, cost, non-determinism. Successful results are cached per query. Failures are not cached and fall back to Solution A.
 
-**Why not embeddings?** They are the right call at scale. I skipped them to keep the stack small, offline and testable, and to avoid a model download in the image. See below.
-
 **Summaries.** Solution A is extractive (top 3 sentences by term frequency, title boost, opener boost). Solution B is the LLM. Search results always use the cheap extractive one so a search never triggers LLM calls per hit.
 
 **Client scope ranks first, then filters.** `client_id` removes other clients' hits after scoring, rather than ranking only that client's documents. The cost is none (search already loads every row). The benefit is that a document's score and order do not change when you add the filter, because the BM25 statistics always come from the whole corpus. Ranking a single client's handful of documents on their own would make scores jump around and become incomparable.
@@ -297,7 +295,7 @@ The final score is `total / (total + 2)`, which keeps it in (0, 1).
 * Concept map is English and UK/US finance flavoured.
 * No auth, no pagination cursor, no document update or delete.
 * `client_id` scopes search to one client, but there is still no multi-tenancy. A real advisor platform needs search limited to the advisor's own clients.
-* Schema is created by Hibernate (`ddl-auto: update`). Use Flyway for production.
+* Schema is created by Hibernate (`ddl-auto: update`). Will use Flyway for production.
 
 ## Layout
 
@@ -317,7 +315,3 @@ src/test/java/
   api/        30 MockMvc integration tests (H2)
 scripts/seed.sh
 ```
-
-## Deploying
-
-The image is a plain Spring Boot jar. Set `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` and optionally `ANTHROPIC_API_KEY`. Any container host works (Fly.io, Render, Cloud Run) plus a managed Postgres.
