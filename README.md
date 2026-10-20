@@ -5,19 +5,19 @@ Intelligent search API for wealth management advisors. Search clients and docume
 
 ## Key Features
 
-** Assignment Requirements (Fully Implemented)**
+**Assignment Requirements (Fully Implemented)**
 - **Find clients** by email/name/description: "NevisWealth" finds `john.doe@neviswealth.com`
 - **Semantic document search**: "address proof" returns documents containing "utility bill"
 - **Document summaries**: Quick AI-powered or extractive summaries of document content
 - **LLM Integration**: Optional Claude integration for query expansion and summarization
 
-** Beyond Requirements**
+**Beyond Requirements**
 - **Transparent matching**: `via_expansion` explains why documents matched, `matched_on` shows which fields
 - **Advanced filtering**: Search by type (client/document), limit results, scope to specific client
 - **Graceful degradation**: Works completely offline, LLM failures don't break search
 - **Production-ready**: 81 tests, clean architecture, proper error handling, deployed and accessible
 
-** How It Works**
+**How It Works**
 - **Semantic expansion**: Built-in concept map of 70+ wealth management terms + optional LLM enhancement
 - **Smart matching**: Multi-field fuzzy matching with typo tolerance and prefix/substring support
 - **BM25 ranking**: Industry-standard document ranking with semantic expansion at 0.6× weight
