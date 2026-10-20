@@ -8,7 +8,7 @@ Search across wealth-management clients and their documents.
 
 Stack: Java 21, Spring Boot 3.3, Spring Data JPA, Postgres, springdoc (Swagger UI), JUnit 5.
 
-## 🚀 Live Deployment
+##  Live Deployment
 
 **API Base URL:** https://nevis-search-api-ytiv.onrender.com
 
