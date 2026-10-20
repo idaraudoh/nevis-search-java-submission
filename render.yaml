@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: nevis-search-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: SERVER_PORT
+        value: 8000
+      - key: SPRING_DATASOURCE_URL
+        fromDatabase:
+          name: nevis-search-db
+          property: connectionString
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: nevis-search-db
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: nevis-search-db
+          property: password
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        value: claude-sonnet-4-20250514
+    healthCheckPath: /health
+
+databases:
+  - name: nevis-search-db
+    plan: free
+    databaseName: nevis
+    user: nevis
