@@ -8,6 +8,24 @@ Search across wealth-management clients and their documents.
 
 Stack: Java 21, Spring Boot 3.3, Spring Data JPA, Postgres, springdoc (Swagger UI), JUnit 5.
 
+## 🚀 Live Deployment
+
+**API Base URL:** https://nevis-search-api-ytiv.onrender.com
+
+**Swagger UI (Interactive Docs):** https://nevis-search-api-ytiv.onrender.com/docs
+
+**Important:** The app runs on Render's free tier and may take 30-50 seconds to wake up on the first request after 15 minutes of inactivity. Subsequent requests are instant.
+
+### Quick Test
+
+```bash
+# Health check
+curl https://nevis-search-api-ytiv.onrender.com/health
+
+# Search (semantic matching works!)
+curl "https://nevis-search-api-ytiv.onrender.com/search?q=address%20proof"
+```
+
 ## Run it
 
 ```bash
