@@ -10,4 +10,8 @@ WORKDIR /srv
 COPY --from=build /build/target/nevis-search.jar app.jar
 EXPOSE 8000
 ENV SERVER_PORT=8000
+# Accept database environment variables from Render
+ENV SPRING_DATASOURCE_URL=""
+ENV SPRING_DATASOURCE_USERNAME=""
+ENV SPRING_DATASOURCE_PASSWORD=""
 ENTRYPOINT ["java", "-jar", "app.jar"]
