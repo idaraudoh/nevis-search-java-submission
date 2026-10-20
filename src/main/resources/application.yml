@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: nevis-search
+  datasource:
+    # Defaults match `docker compose up -d db`. The api container overrides them via env.
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/nevis}
+    username: ${SPRING_DATASOURCE_USERNAME:nevis}
+    password: ${SPRING_DATASOURCE_PASSWORD:nevis}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+    default-property-inclusion: non_null
+
+nevis:
+  llm:
+    # Optional. Leave empty to run fully offline.
+    api-key: ${ANTHROPIC_API_KEY:}
+    model: ${LLM_MODEL:claude-sonnet-5-5}
+    timeout: 8s
+
+springdoc:
+  swagger-ui:
+    path: /docs

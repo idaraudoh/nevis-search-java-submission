@@ -1,0 +1,643 @@
+openapi: 3.1.0
+info:
+  title: Nevis Search API
+  version: 1.0.0
+  description: |
+    Search API across wealth-management clients and their documents.
+    
+    Features:
+    - Find clients by name, email, description
+    - Find documents by semantic similarity (e.g., "address proof" finds "utility bill")
+    - Get quick summaries of document content
+    
+    Stack: Java 21, Spring Boot 3.3, Spring Data JPA, Postgres
+    
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+
+tags:
+  - name: clients
+    description: Client management operations
+  - name: documents
+    description: Document management operations
+  - name: search
+    description: Search across clients and documents
+  - name: meta
+    description: Service health and metadata
+
+paths:
+  /health:
+    get:
+      tags:
+        - meta
+      summary: Health check
+      description: Returns service health status
+      operationId: getHealth
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: UP
+
+  /clients:
+    post:
+      tags:
+        - clients
+      summary: Create a client
+      description: |
+        Creates a new client. Returns 201 on success, 409 if the email already exists, 
+        422 if the body is invalid, 400 for malformed JSON.
+      operationId: createClient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateClientRequest'
+            examples:
+              basic:
+                value:
+                  first_name: John
+                  last_name: Doe
+                  email: john.doe@neviswealth.com
+                  description: Senior partner. Interested in ESG funds.
+                  social_links:
+                    - https://linkedin.com/in/johndoe
+      responses:
+        '201':
+          description: Client created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientResponse'
+        '400':
+          description: Malformed JSON
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                status: 409
+                error: Conflict
+                message: Email already exists
+        '422':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                status: 422
+                error: Unprocessable Entity
+                message: Validation failed
+                fields:
+                  email: must be a valid email address
+
+  /clients/{id}:
+    get:
+      tags:
+        - clients
+      summary: Get a client
+      description: Returns a client by ID. 404 if the client does not exist.
+      operationId: getClient
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Client ID
+      responses:
+        '200':
+          description: Client found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientResponse'
+        '404':
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /clients/{id}/documents:
+    post:
+      tags:
+        - documents
+      summary: Add a document to a client
+      description: |
+        Creates a document for a specific client. Returns 201 on success, 
+        404 if the client does not exist, 422 if the body is invalid.
+      operationId: createDocument
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Client ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDocumentRequest'
+            examples:
+              passport:
+                value:
+                  title: UK passport
+                  content: UK passport, valid until 2031. Holder John Doe.
+              utility_bill:
+                value:
+                  title: March utility statement
+                  content: Utility bill from British Gas for March. Amount due 84.20 GBP. Direct debit set up.
+      responses:
+        '201':
+          description: Document created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '404':
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /documents/{id}:
+    get:
+      tags:
+        - documents
+      summary: Get a document
+      description: Returns a document by ID. 404 if the document does not exist.
+      operationId: getDocument
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Document ID
+      responses:
+        '200':
+          description: Document found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '404':
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /documents/{id}/summary:
+    get:
+      tags:
+        - documents
+      summary: Quick summary of a document
+      description: |
+        Returns a summary of the document content. The `method` field indicates 
+        whether the summary was generated by LLM or extractive algorithm. 
+        Falls back to extractive if LLM is unavailable.
+      operationId: getDocumentSummary
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Document ID
+      responses:
+        '200':
+          description: Summary generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentSummaryResponse'
+              examples:
+                extractive:
+                  value:
+                    document_id: a9257743-4b2e-4f8c-9d1a-6e7f8a9b0c1d
+                    summary: UK passport, valid until 2031. Holder John Doe.
+                    method: extractive
+                llm:
+                  value:
+                    document_id: a9257743-4b2e-4f8c-9d1a-6e7f8a9b0c1d
+                    summary: This is a UK passport document for John Doe, valid until 2031.
+                    method: llm
+        '404':
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /search:
+    get:
+      tags:
+        - search
+      summary: Search clients and documents
+      description: |
+        Search across clients and documents using natural language queries.
+        
+        Results are sorted by score (0 to 1, higher is better). 
+        
+        Features:
+        - Client search: matches against name, email, description, social links
+        - Document search: semantic matching (e.g., "address proof" finds "utility bill")
+        - Optional filtering by type (all, client, document)
+        - Optional scoping to a specific client
+        - Document hits include the owning client information
+        
+        Error codes:
+        - 422: Missing/blank query, invalid type/limit/client_id
+        - 404: Unknown client_id
+      operationId: search
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            maxLength: 500
+          description: Search query text
+          example: address proof
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [all, client, document]
+            default: all
+          description: Filter results by type
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Maximum number of results
+        - name: client_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Only search within this client and their documents
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SearchResult'
+              examples:
+                client_match:
+                  summary: Client search by email domain
+                  value:
+                    - type: client
+                      score: 1.0
+                      client:
+                        id: 955671d6-a2b3-4c5d-8e9f-0a1b2c3d4e5f
+                        first_name: John
+                        last_name: Doe
+                        email: john.doe@neviswealth.com
+                        description: Senior partner. Interested in ESG funds.
+                        social_links:
+                          - https://linkedin.com/in/johndoe
+                        created_at: "2026-10-18T22:46:09Z"
+                      matched_on:
+                        - email
+                document_semantic:
+                  summary: Semantic document search
+                  value:
+                    - type: document
+                      score: 0.6206
+                      document:
+                        id: 8e9a52f9-1b2c-3d4e-5f6a-7b8c9d0e1f2a
+                        client_id: 4c1b7a20-3b4c-5d6e-7f8a-9b0c1d2e3f4a
+                        title: Proof of address letter
+                        content: This letter is proof of address for Maria Garcia...
+                        created_at: "2026-10-18T22:47:15Z"
+                      owner:
+                        id: 4c1b7a20-3b4c-5d6e-7f8a-9b0c1d2e3f4a
+                        first_name: Maria
+                        last_name: Garcia
+                        email: maria@acme.io
+                      snippet: This letter is proof of address for Maria Garcia, resident at Calle Mayor 4, Madrid.
+                      summary: This letter is proof of address for Maria Garcia, resident at Calle Mayor 4, Madrid.
+                      matched_terms:
+                        - address
+                        - proof
+                      via_expansion: []
+                    - type: document
+                      score: 0.3634
+                      document:
+                        id: 6ea03f15-2c3d-4e5f-6a7b-8c9d0e1f2a3b
+                        client_id: 955671d6-a2b3-4c5d-8e9f-0a1b2c3d4e5f
+                        title: March utility statement
+                        content: Utility bill from British Gas for March...
+                        created_at: "2026-10-18T22:48:32Z"
+                      owner:
+                        id: 955671d6-a2b3-4c5d-8e9f-0a1b2c3d4e5f
+                        first_name: John
+                        last_name: Doe
+                        email: john.doe@neviswealth.com
+                      snippet: Utility bill from British Gas for March.
+                      summary: Utility bill from British Gas for March. Amount due 84.20 GBP. Direct debit set up.
+                      matched_terms:
+                        - address
+                      via_expansion:
+                        - utility bill
+        '404':
+          description: Unknown client_id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              examples:
+                missing_query:
+                  value:
+                    status: 422
+                    error: Unprocessable Entity
+                    message: q must not be blank
+                invalid_type:
+                  value:
+                    status: 422
+                    error: Unprocessable Entity
+                    message: "type must be one of: all, client, document"
+
+components:
+  schemas:
+    CreateClientRequest:
+      type: object
+      required:
+        - first_name
+        - last_name
+        - email
+      properties:
+        first_name:
+          type: string
+          minLength: 1
+          example: John
+        last_name:
+          type: string
+          minLength: 1
+          example: Doe
+        email:
+          type: string
+          format: email
+          example: john.doe@neviswealth.com
+        description:
+          type: string
+          example: Senior partner. Interested in ESG funds.
+        social_links:
+          type: array
+          items:
+            type: string
+            format: uri
+          example:
+            - https://linkedin.com/in/johndoe
+
+    ClientResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 955671d6-a2b3-4c5d-8e9f-0a1b2c3d4e5f
+        first_name:
+          type: string
+          example: John
+        last_name:
+          type: string
+          example: Doe
+        email:
+          type: string
+          format: email
+          example: john.doe@neviswealth.com
+        description:
+          type: string
+          example: Senior partner. Interested in ESG funds.
+        social_links:
+          type: array
+          items:
+            type: string
+          example:
+            - https://linkedin.com/in/johndoe
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-10-18T22:46:09Z"
+
+    ClientSummary:
+      type: object
+      description: Minimal client information included in document search results
+      properties:
+        id:
+          type: string
+          format: uuid
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+          format: email
+
+    CreateDocumentRequest:
+      type: object
+      required:
+        - title
+        - content
+      properties:
+        title:
+          type: string
+          minLength: 1
+          example: UK passport
+        content:
+          type: string
+          minLength: 1
+          example: UK passport, valid until 2031. Holder John Doe.
+
+    DocumentResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: a9257743-4b2e-4f8c-9d1a-6e7f8a9b0c1d
+        client_id:
+          type: string
+          format: uuid
+          example: 955671d6-a2b3-4c5d-8e9f-0a1b2c3d4e5f
+        title:
+          type: string
+          example: UK passport
+        content:
+          type: string
+          example: UK passport, valid until 2031. Holder John Doe.
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-10-18T22:46:30Z"
+
+    DocumentSummaryResponse:
+      type: object
+      properties:
+        document_id:
+          type: string
+          format: uuid
+          example: a9257743-4b2e-4f8c-9d1a-6e7f8a9b0c1d
+        summary:
+          type: string
+          example: UK passport, valid until 2031. Holder John Doe.
+        method:
+          type: string
+          enum: [llm, extractive]
+          description: How the summary was generated
+          example: extractive
+
+    SearchResult:
+      oneOf:
+        - $ref: '#/components/schemas/ClientSearchHit'
+        - $ref: '#/components/schemas/DocumentSearchHit'
+      discriminator:
+        propertyName: type
+        mapping:
+          client: '#/components/schemas/ClientSearchHit'
+          document: '#/components/schemas/DocumentSearchHit'
+
+    ClientSearchHit:
+      type: object
+      required:
+        - type
+        - score
+        - client
+        - matched_on
+      properties:
+        type:
+          type: string
+          enum: [client]
+          example: client
+        score:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Relevance score (0 to 1, higher is better)
+          example: 1.0
+        client:
+          $ref: '#/components/schemas/ClientResponse'
+        matched_on:
+          type: array
+          items:
+            type: string
+          description: Fields that matched the query
+          example: [email]
+
+    DocumentSearchHit:
+      type: object
+      required:
+        - type
+        - score
+        - document
+        - owner
+        - snippet
+        - summary
+        - matched_terms
+        - via_expansion
+      properties:
+        type:
+          type: string
+          enum: [document]
+          example: document
+        score:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Relevance score (0 to 1, higher is better)
+          example: 0.6206
+        document:
+          $ref: '#/components/schemas/DocumentResponse'
+        owner:
+          $ref: '#/components/schemas/ClientSummary'
+          description: The client who owns this document
+        snippet:
+          type: string
+          description: Relevant excerpt from the document
+          example: This letter is proof of address for Maria Garcia...
+        summary:
+          type: string
+          description: Quick summary of document content
+          example: Proof of address letter for Maria Garcia in Madrid
+        matched_terms:
+          type: array
+          items:
+            type: string
+          description: Query terms that matched in the document
+          example: [address, proof]
+        via_expansion:
+          type: array
+          items:
+            type: string
+          description: Related phrases that caused this document to match (semantic expansion)
+          example: [utility bill]
+
+    ApiError:
+      type: object
+      properties:
+        status:
+          type: integer
+          example: 422
+        error:
+          type: string
+          example: Unprocessable Entity
+        message:
+          type: string
+          example: Validation failed
+        fields:
+          type: object
+          additionalProperties:
+            type: string
+          description: Field-level validation errors (present only for validation failures)
+          example:
+            email: must be a valid email address
