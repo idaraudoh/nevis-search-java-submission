@@ -9,7 +9,7 @@ Intelligent search API for wealth management advisors. Search clients and docume
 - **Find clients** by email/name/description: "NevisWealth" finds `john.doe@neviswealth.com`
 - **Semantic document search**: "address proof" returns documents containing "utility bill"
 - **Document summaries**: Quick AI-powered or extractive summaries of document content
-- **LLM Integration**: Optional Claude integration for query expansion and summarization
+- **LLM Integration**: Claude API enabled in live deployment for query expansion and summarization
 
 **Beyond Requirements**
 - **Transparent matching**: `via_expansion` explains why documents matched, `matched_on` shows which fields
